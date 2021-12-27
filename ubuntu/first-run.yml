@@ -1,12 +1,13 @@
 ---
   - name: Initial configuration of Ubuntu servers
     hosts: all
+    become_user: root
     become: true
     tasks:
       - name: Set timezone to Africa/Johannesburg
         community.general.timezone:
           name: Africa/Johannesburg
-        when: not ansible_date_time.tz == "SAST"
+          #when: not ansible_date_time.tz == "SAST"
       - name: Generate en_US.UTF-8 locale
         locale_gen:
           name: en_US.UTF-8
@@ -15,24 +16,6 @@
       - name: Set locale to en_US.UTF-8
         command: update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
         when: not ansible_env.LANG == "en_US.UTF-8"
-      - name: Check passwordless sudo for {{ ansible_user_id }}
-        stat:
-          path: "/etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd"
-        register: file_exists
-      - name: Configure passwordless sudo for {{ ansible_user_id }}
-        file:
-          path: "/etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd"
-          mode: 0440
-          state: touch
-        when: not file_exists.stat.exists
-      - name: Enable passwordless sudo for {{ ansible_user_id }}
-        lineinfile:
-          dest: /etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd
-          state: present
-          regexp: "%{{ ansible_user_id }}"
-          line: "{{ ansible_user_id }} ALL=(ALL) NOPASSWD: ALL"
-          validate: visudo -cf %s
-        when: not file_exists.stat.exists
       - name: Add GIT PPA
         ansible.builtin.apt_repository:
           repo: ppa:git-core/ppa
@@ -69,21 +52,118 @@
             - python3
             - python3-pip
             - socat
-            - software-properties-common 
+            - software-properties-common
             - tmux
             - zsh
             - zsh-antigen
           update_cache: true
+          autoclean: true
+          state: present
+      - name: Remove obsolete packages
+        ansible.builtin.apt:
+          pkg:
+            - snapd
+            - vim
+            - vim-tiny
+          purge: true
+          autoremove: true
+          autoclean: true
+          state: absent
+      - name: Create user - binarymisfit
+        ansible.builtin.user:
+          name: binarymisfit
+          groups: sudo
+          shell: /usr/bin/zsh
+          state: present
+  - name: Configure environment - root
+    hosts: all
+    become_user: root
+    become: true
+    tasks:
+      - name: Update shell to zsh ({{ ansible_user_id }})
+        ansible.builtin.user:
+          name: "{{ ansible_user_id }}"
+          shell: /usr/bin/zsh
+      - name: Check passwordless sudo ({{ ansible_user_id }})
+        ansible.builtin.file:
+          path: "/etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd"
+          mode: 0440
+          state: touch
+          modification_time: preserve
+          access_time: preserve
+      - name: Enable passwordless sudo
+        ansible.builtin.lineinfile:
+          dest: /etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd
+          regexp: "%{{ ansible_user_id }}"
+          line: "{{ ansible_user_id }} ALL=(ALL) NOPASSWD: ALL"
+          validate: visudo -cf %s
+          state: present
+      - name: Check npmrc 
+        ansible.builtin.file:
+          path: "{{ ansible_env.HOME }}/.npmrc"
+          mode: 0600
+          state: touch
+          modification_time: preserve
+          access_time: preserve
+      - name: Set npm configuration
+        ansible.builtin.lineinfile:
+          dest: "{{ ansible_env.HOME }}/.npmrc"
+          regexp: "%prefix"
+          line: "prefix={{ ansible_env.HOME }}/.npm_packages"
+          state: present
       - name: Install neovim package
         community.general.npm:
           name: neovim
-          path: ~/.npm_packages
+          global: true
+      - name: Install pynvim package
+        ansible.builtin.pip:
+          name: pynvim
+  - name: Configure environment - binarymisfit
+    hosts: all
+    become_user: binarymisfit
+    become: true
+    tasks:
+      - name: Update shell to zsh ({{ ansible_user_id }})
+        ansible.builtin.user:
+          name: "{{ ansible_user_id }}"
+          shell: /usr/bin/zsh
+      - name: Check passwordless sudo ({{ ansible_user_id }})
+        ansible.builtin.file:
+          path: "/etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd"
+          mode: 0440
+          state: touch
+          modification_time: preserve
+          access_time: preserve
+      - name: Enable passwordless sudo
+        ansible.builtin.lineinfile:
+          dest: /etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd
+          regexp: "%{{ ansible_user_id }}"
+          line: "{{ ansible_user_id }} ALL=(ALL) NOPASSWD: ALL"
+          validate: visudo -cf %s
+          state: present
+      - name: Check npmrc 
+        ansible.builtin.file:
+          path: "{{ ansible_env.HOME }}/.npmrc"
+          mode: 0600
+          state: touch
+          modification_time: preserve
+          access_time: preserve
+      - name: Set npm configuration
+        ansible.builtin.lineinfile:
+          dest: "{{ ansible_env.HOME }}/.npmrc"
+          regexp: "%prefix"
+          line: "prefix={{ ansible_env.HOME }}/.npm_packages"
+          state: present
+      - name: Install neovim package
+        community.general.npm:
+          name: neovim
           global: true
       - name: Install pynvim package
         ansible.builtin.pip:
           name: pynvim
   - name: Configure servers to run as kubernetes nodes
     hosts: kubenodes
+    become_user: root
     become: true
     tasks:
       - name: Add GlusterFS PPA
