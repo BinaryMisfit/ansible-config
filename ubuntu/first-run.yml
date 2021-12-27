@@ -22,6 +22,7 @@
       - name: Configure passwordless sudo for {{ ansible_user_id }}
         file:
           path: "/etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd"
+          mode: 0440
           state: touch
         when: not file_exists.stat.exists
       - name: Enable passwordless sudo for {{ ansible_user_id }}
@@ -32,3 +33,26 @@
           line: "{{ ansible_user_id }} ALL=(ALL) NOPASSWD: ALL"
           validate: visudo -cf %s
         when: not file_exists.stat.exists
+      - name: Add GIT PPA
+        ansible.builtin.apt_repository:
+          repo: ppa:git-core/ppa
+          state: present
+      - name: Add Neovim PPA
+        ansible.builtin.apt_repository:
+          repo: ppa:neovim-ppa/stable
+          state: present
+      - name: Add nodesource key
+        ansible.builtin.apt_key:
+          url: https://deb.nodesource.com/gpgkey/nodesource.gpg.key
+          state: present
+      - name: Add nodesource repository
+        ansible.builtin.apt_repository:
+          repo: deb https://deb.nodesource.com/node_17.x impish main
+  - name: Ubuntu Kubernetes
+    hosts: kubenodes
+    become: true
+    tasks:
+      - name: Add GlusterFS PPA
+        ansible.builtin.apt_repository:
+          repo: ppa:gluster/glusterfs-9
+          state: present
