@@ -1,0 +1,34 @@
+---
+  - name: Ubuntu First Run
+    hosts: all
+    become: true
+    tasks:
+      - name: Set timezone to Africa/Johannesburg
+        community.general.timezone:
+          name: Africa/Johannesburg
+        when: not ansible_date_time.tz == "SAST"
+      - name: Generate en_US.UTF-8 locale
+        locale_gen:
+          name: en_US.UTF-8
+          state: present
+        when: not ansible_env.LANG == "en_US.UTF-8"
+      - name: Set locale to en_US.UTF-8
+        command: update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+        when: not ansible_env.LANG == "en_US.UTF-8"
+      - name: Check passwordless sudo for {{ ansible_user_id }}
+        stat:
+          path: "/etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd"
+        register: file_exists 
+      - name: Configure passwordless sudo for {{ ansible_user_id }}
+        file:
+          path: "/etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd"
+          state: touch
+        when: not file_exists.stat.exists
+      - name: Enable passwordless sudo for {{ ansible_user_id }}
+        lineinfile:
+          dest: /etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd
+          state: present
+          regexp: "%{{ ansible_user_id }}"
+          line: "{{ ansible_user_id }} ALL=(ALL) NOPASSWD: ALL"
+          validate: visudo -cf %s
+        when: not file_exists.stat.exists

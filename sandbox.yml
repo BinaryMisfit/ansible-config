@@ -1,0 +1,7 @@
+---
+  - name: Sandbox Playbook
+    hosts: all
+    tasks:
+      - name: Display current date
+        shell:
+          "date"
