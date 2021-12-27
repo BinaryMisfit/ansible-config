@@ -1,5 +1,5 @@
 ---
-  - name: Ubuntu First Run
+  - name: Initial configuration of Ubuntu servers
     hosts: all
     become: true
     tasks:
@@ -18,7 +18,7 @@
       - name: Check passwordless sudo for {{ ansible_user_id }}
         stat:
           path: "/etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd"
-        register: file_exists 
+        register: file_exists
       - name: Configure passwordless sudo for {{ ansible_user_id }}
         file:
           path: "/etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd"
@@ -48,7 +48,41 @@
       - name: Add nodesource repository
         ansible.builtin.apt_repository:
           repo: deb https://deb.nodesource.com/node_17.x impish main
-  - name: Ubuntu Kubernetes
+      - name: Update all packages
+        ansible.builtin.apt:
+          upgrade: full
+          update_cache: true
+      - name: Install required packages
+        ansible.builtin.apt:
+          pkg:
+            - build-essential
+            - coreutils
+            - curl
+            - i2c-tools
+            - imagemagick
+            - indicator-cpufreq
+            - jq
+            - lm-sensors
+            - nodejs
+            - neofetch
+            - neovim
+            - python3
+            - python3-pip
+            - socat
+            - software-properties-common 
+            - tmux
+            - zsh
+            - zsh-antigen
+          update_cache: true
+      - name: Install neovim package
+        community.general.npm:
+          name: neovim
+          path: ~/.npm_packages
+          global: true
+      - name: Install pynvim package
+        ansible.builtin.pip:
+          name: pynvim
+  - name: Configure servers to run as kubernetes nodes
     hosts: kubenodes
     become: true
     tasks:
@@ -56,3 +90,12 @@
         ansible.builtin.apt_repository:
           repo: ppa:gluster/glusterfs-9
           state: present
+      - name: Update all packages
+        ansible.builtin.apt:
+          upgrade: full
+          update_cache: true
+      - name: Install required packages
+        ansible.builtin.apt:
+          pkg:
+            - glusterfs-server
+          update_cache: true
