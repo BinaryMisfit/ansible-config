@@ -11,6 +11,15 @@
     ansible.builtin.user:
       name: "{{ user_to_configure }}"
       shell: /usr/bin/zsh
+  - name: Install dotfiles
+    become_user: "{{ user_to_configure }}"
+    become: true
+    ansible.builtin.git:
+      repo: https://github.com/BinaryMisfit/dot-files-ubuntu
+      dest: "{{ user_data.home }}/.dotfiles"
+      update: true
+      recursive: true
+      version: active
   - name: Check npmrc
     ansible.builtin.file:
       path: "{{ user_data.home }}/.npmrc"
