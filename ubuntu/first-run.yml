@@ -1,8 +1,6 @@
 ---
   - name: Initial configuration of Ubuntu servers
     hosts: all
-    become_user: root
-    become: true
     tasks:
       - include_tasks: roles/system/tasks/region_setup.yml
         vars:
@@ -22,10 +20,14 @@
           repo_list:
             - deb https://deb.nodesource.com/node_17.x impish main
       - name: Update all packages
+        become_user: root
+        become: true
         ansible.builtin.apt:
           upgrade: full
           update_cache: true
       - name: Install required packages
+        become_user: root
+        become: true
         ansible.builtin.apt:
           pkg:
             - build-essential
@@ -50,6 +52,8 @@
           autoclean: true
           state: present
       - name: Remove obsolete packages
+        become_user: root
+        become: true
         ansible.builtin.apt:
           pkg:
             - snapd
@@ -60,6 +64,8 @@
           autoclean: true
           state: absent
       - name: Create user - binarymisfit
+        become_user: root
+        become: true
         ansible.builtin.user:
           name: binarymisfit
           groups: sudo
@@ -73,19 +79,19 @@
           - binarymisfit
   - name: Configure servers to run as kubernetes nodes
     hosts: kubenodes
-    become_user: root
-    become: true
     tasks:
-      - name: Add GlusterFS PPA
-        ansible.builtin.apt_repository:
-          repo: ppa:gluster/glusterfs-9
-          state: present
-      - name: Update all packages
-        ansible.builtin.apt:
-          upgrade: full
-          update_cache: true
+      - include_tasks: roles/apt/tasks/install_ppa.yml
+        vars:
+          ppa_list:
+            - ppa:gluster/glusterfs-9
       - name: Install required packages
+        become_user: root
+        become: true
         ansible.builtin.apt:
           pkg:
             - glusterfs-server
           update_cache: true
+  - name: Configure servers to use ansible pull
+    hosts: all
+    taske:
+      - include_tasks: roles/system/tasks/ansible-pull.yml

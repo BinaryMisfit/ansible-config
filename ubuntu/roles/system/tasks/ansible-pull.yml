@@ -1,0 +1,5 @@
+---
+- include_tasks: ../../apt/tasks/install_ppa.yml
+vars:
+  ppa_list:
+    - ppa:gluster/glusterfs-9
