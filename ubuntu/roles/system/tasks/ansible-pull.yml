@@ -1,5 +1,36 @@
 ---
-- include_tasks: ../../apt/tasks/install_ppa.yml
-vars:
-  ppa_list:
-    - ppa:gluster/glusterfs-9
+  - include_tasks: ../../apt/tasks/install_ppa.yml
+    vars:
+      ppa_list:
+        - ppa:ansible/ansible
+  - name: Install ansible packages
+    become_user: root
+    become: true
+    ansible.builtin.apt:
+      pkg:
+        - ansible
+      update_cache: true
+  - name: Create ansible working directory
+    become_user: root
+    become: true
+    ansible.builtin.file:
+      path: "/var/lib/ansible/local"
+      mode: 0751
+      group: root
+      owner: root
+      state: directory
+  - name: Install ansible cron
+    become_user: root
+    become: true
+    ansible.builtin.template: 
+      src: templates/etc_crond_ansible_pull.j2
+      dest: /etc/cron.d/ansible_pull
+      owner: root
+      group: root
+      mode: 0644
+    vars:
+      schedule: "*/15 * * * *"
+      cron_user: root
+      logfile: /var/log/ansible_pull.log
+      workdir: /var/lib/ansible/local
+      repo_url: https://github.com/BinaryMisfit/ansible-playbooks

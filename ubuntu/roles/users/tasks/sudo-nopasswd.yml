@@ -1,5 +1,5 @@
 ---
-  - name: Check passwordless sudo ({{ user_for_sudo }})
+  - name: "{{ user_for_sudo }}: Check passwordless sudo"
     become_user: root
     become: true
     ansible.builtin.file:
@@ -8,7 +8,7 @@
       state: touch
       modification_time: preserve
       access_time: preserve
-  - name: Enable passwordless sudo ({{ user_for_sudo }})
+  - name: "{{ user_for_sudo }}: Enable passwordless sudo"
     become_user: root
     become: true
     ansible.builtin.lineinfile:

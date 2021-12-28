@@ -1,5 +1,7 @@
 ---
   - name: Add debian repositories
+    become_user: root
+    become: true
     ansible.builtin.apt_repository:
       repo: "{{ item }}"
     with_items:

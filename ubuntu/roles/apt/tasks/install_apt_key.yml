@@ -1,5 +1,7 @@
 ---
   - name: Add apt keys
+    become_user: root
+    become: true
     ansible.builtin.apt_key:
       url: "{{ item }}"
       state: present

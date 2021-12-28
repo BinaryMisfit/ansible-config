@@ -1,5 +1,7 @@
 ---
   - name: Adding PPA repositories
+    become_user: root
+    become: true
     ansible.builtin.apt_repository:
       repo: "{{ item }}"
       state: present

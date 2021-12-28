@@ -2,16 +2,16 @@
   - include_tasks: sudo-nopasswd.yml
     vars:
       user_for_sudo: "{{ user_to_configure }}"
-  - name: Get user info
+  - name: "{{ user_to_configure }}: Get user info"
     ansible.builtin.user:
       name: "{{ user_to_configure }}"
       state: present
     register: user_data
-  - name: Update shell to ZSH
+  - name: "{{ user_to_configure }}: Update shell to ZSH"
     ansible.builtin.user:
       name: "{{ user_to_configure }}"
       shell: /usr/bin/zsh
-  - name: Install dotfiles
+  - name: "{{ user_to_configure }}: Install dotfiles"
     become_user: "{{ user_to_configure }}"
     become: true
     ansible.builtin.git:
@@ -20,7 +20,9 @@
       update: true
       recursive: true
       version: active
-  - name: Check npmrc
+  - name: "{{ user_to_configure }}: Check npmrc"
+    become_user: "{{ user_to_configure }}"
+    become: true
     ansible.builtin.file:
       path: "{{ user_data.home }}/.npmrc"
       mode: 0600
@@ -29,13 +31,15 @@
       state: touch
       modification_time: preserve
       access_time: preserve
-  - name: Set npm configuration
+  - name: "{{ user_to_configure }}: Set npm configuration"
+    become_user: "{{ user_to_configure }}"
+    become: true
     ansible.builtin.lineinfile:
       dest: "{{ user_data.home }}/.npmrc"
       regexp: "%prefix"
       line: "prefix={{ user_data.home }}/.npm_packages"
       state: present
-  - name: Install node packages
+  - name: "{{ user_to_configure }}: Install node packages"
     become_user: "{{ user_to_configure }}"
     become: true
     community.general.npm:
@@ -45,7 +49,7 @@
       loop_var: node_item
     with_items:
       - neovim
-  - name: Install python packages
+  - name: "{{ user_to_configure }}: Install python packages"
     become_user: "{{ user_to_configure }}"
     become: true
     ansible.builtin.pip:
