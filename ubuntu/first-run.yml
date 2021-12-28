@@ -7,15 +7,13 @@
       - name: Set timezone to Africa/Johannesburg
         community.general.timezone:
           name: Africa/Johannesburg
-          #when: not ansible_date_time.tz == "SAST"
       - name: Generate en_US.UTF-8 locale
         locale_gen:
           name: en_US.UTF-8
           state: present
-        when: not ansible_env.LANG == "en_US.UTF-8"
       - name: Set locale to en_US.UTF-8
         command: update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
-        when: not ansible_env.LANG == "en_US.UTF-8"
+        changed_when: not ansible_env.LANG == "en_US.UTF-8"
       - name: Add GIT PPA
         ansible.builtin.apt_repository:
           repo: ppa:git-core/ppa
@@ -80,25 +78,14 @@
     become_user: root
     become: true
     tasks:
+      - include_tasks: roles/users/tasks/sudo-nopasswd.yml
+        vars:
+          user_for_sudo: "{{ ansible_user_id }}"
       - name: Update shell to zsh ({{ ansible_user_id }})
         ansible.builtin.user:
           name: "{{ ansible_user_id }}"
           shell: /usr/bin/zsh
-      - name: Check passwordless sudo ({{ ansible_user_id }})
-        ansible.builtin.file:
-          path: "/etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd"
-          mode: 0440
-          state: touch
-          modification_time: preserve
-          access_time: preserve
-      - name: Enable passwordless sudo
-        ansible.builtin.lineinfile:
-          dest: /etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd
-          regexp: "%{{ ansible_user_id }}"
-          line: "{{ ansible_user_id }} ALL=(ALL) NOPASSWD: ALL"
-          validate: visudo -cf %s
-          state: present
-      - name: Check npmrc 
+      - name: Check npmrc
         ansible.builtin.file:
           path: "{{ ansible_env.HOME }}/.npmrc"
           mode: 0600
@@ -123,25 +110,14 @@
     become_user: binarymisfit
     become: true
     tasks:
+      - include_tasks: roles/users/tasks/sudo-nopasswd.yml
+        vars:
+          user_for_sudo: "{{ ansible_user_id }}"
       - name: Update shell to zsh ({{ ansible_user_id }})
         ansible.builtin.user:
           name: "{{ ansible_user_id }}"
           shell: /usr/bin/zsh
-      - name: Check passwordless sudo ({{ ansible_user_id }})
-        ansible.builtin.file:
-          path: "/etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd"
-          mode: 0440
-          state: touch
-          modification_time: preserve
-          access_time: preserve
-      - name: Enable passwordless sudo
-        ansible.builtin.lineinfile:
-          dest: /etc/sudoers.d/90-{{ ansible_user_id }}-nopasswd
-          regexp: "%{{ ansible_user_id }}"
-          line: "{{ ansible_user_id }} ALL=(ALL) NOPASSWD: ALL"
-          validate: visudo -cf %s
-          state: present
-      - name: Check npmrc 
+      - name: Check npmrc
         ansible.builtin.file:
           path: "{{ ansible_env.HOME }}/.npmrc"
           mode: 0600
