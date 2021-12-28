@@ -1,0 +1,6 @@
+---
+  - name: Add debian repositories
+    ansible.builtin.apt_repository:
+      repo: "{{ item }}"
+    with_items:
+      - "{{ repo_list }}"

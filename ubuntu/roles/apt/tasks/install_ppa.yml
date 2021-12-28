@@ -1,0 +1,7 @@
+---
+  - name: Adding PPA repositories
+    ansible.builtin.apt_repository:
+      repo: "{{ item }}"
+      state: present
+    with_items:
+      - "{{ ppa_list }}"

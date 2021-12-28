@@ -4,31 +4,23 @@
     become_user: root
     become: true
     tasks:
-      - name: Set timezone to Africa/Johannesburg
-        community.general.timezone:
-          name: Africa/Johannesburg
-      - name: Generate en_US.UTF-8 locale
-        locale_gen:
-          name: en_US.UTF-8
-          state: present
-      - name: Set locale to en_US.UTF-8
-        command: update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
-        changed_when: not ansible_env.LANG == "en_US.UTF-8"
-      - name: Add GIT PPA
-        ansible.builtin.apt_repository:
-          repo: ppa:git-core/ppa
-          state: present
-      - name: Add Neovim PPA
-        ansible.builtin.apt_repository:
-          repo: ppa:neovim-ppa/stable
-          state: present
-      - name: Add nodesource key
-        ansible.builtin.apt_key:
-          url: https://deb.nodesource.com/gpgkey/nodesource.gpg.key
-          state: present
-      - name: Add nodesource repository
-        ansible.builtin.apt_repository:
-          repo: deb https://deb.nodesource.com/node_17.x impish main
+      - include_tasks: roles/system/tasks/region_setup.yml
+        vars:
+          timezone_for_os: "Africa/Johannesburg"
+          locale_for_os: "en_US.UTF-8"
+      - include_tasks: roles/apt/tasks/install_ppa.yml
+        vars:
+          ppa_list:
+            - ppa:git-core/ppa
+            - ppa:neovim-ppa/stable
+      - include_tasks: roles/apt/tasks/install_apt_key.yml
+        vars:
+          key_list:
+            - https://deb.nodesource.com/gpgkey/nodesource.gpg.key
+      - include_tasks: roles/apt/tasks/install_deb_sources.yml
+        vars:
+          repo_list:
+            - deb https://deb.nodesource.com/node_17.x impish main
       - name: Update all packages
         ansible.builtin.apt:
           upgrade: full
@@ -73,70 +65,12 @@
           groups: sudo
           shell: /usr/bin/zsh
           state: present
-  - name: Configure environment - root
-    hosts: all
-    become_user: root
-    become: true
-    tasks:
-      - include_tasks: roles/users/tasks/sudo-nopasswd.yml
+      - include_tasks: roles/users/tasks/configure-env.yml
         vars:
-          user_for_sudo: "{{ ansible_user_id }}"
-      - name: Update shell to zsh ({{ ansible_user_id }})
-        ansible.builtin.user:
-          name: "{{ ansible_user_id }}"
-          shell: /usr/bin/zsh
-      - name: Check npmrc
-        ansible.builtin.file:
-          path: "{{ ansible_env.HOME }}/.npmrc"
-          mode: 0600
-          state: touch
-          modification_time: preserve
-          access_time: preserve
-      - name: Set npm configuration
-        ansible.builtin.lineinfile:
-          dest: "{{ ansible_env.HOME }}/.npmrc"
-          regexp: "%prefix"
-          line: "prefix={{ ansible_env.HOME }}/.npm_packages"
-          state: present
-      - name: Install neovim package
-        community.general.npm:
-          name: neovim
-          global: true
-      - name: Install pynvim package
-        ansible.builtin.pip:
-          name: pynvim
-  - name: Configure environment - binarymisfit
-    hosts: all
-    become_user: binarymisfit
-    become: true
-    tasks:
-      - include_tasks: roles/users/tasks/sudo-nopasswd.yml
-        vars:
-          user_for_sudo: "{{ ansible_user_id }}"
-      - name: Update shell to zsh ({{ ansible_user_id }})
-        ansible.builtin.user:
-          name: "{{ ansible_user_id }}"
-          shell: /usr/bin/zsh
-      - name: Check npmrc
-        ansible.builtin.file:
-          path: "{{ ansible_env.HOME }}/.npmrc"
-          mode: 0600
-          state: touch
-          modification_time: preserve
-          access_time: preserve
-      - name: Set npm configuration
-        ansible.builtin.lineinfile:
-          dest: "{{ ansible_env.HOME }}/.npmrc"
-          regexp: "%prefix"
-          line: "prefix={{ ansible_env.HOME }}/.npm_packages"
-          state: present
-      - name: Install neovim package
-        community.general.npm:
-          name: neovim
-          global: true
-      - name: Install pynvim package
-        ansible.builtin.pip:
-          name: pynvim
+          user_to_configure: "{{ item }}"
+        with_items:
+          - root
+          - binarymisfit
   - name: Configure servers to run as kubernetes nodes
     hosts: kubenodes
     become_user: root

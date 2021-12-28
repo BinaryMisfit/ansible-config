@@ -1,0 +1,11 @@
+---
+  - name: Set timezone to {{ timezone_for_os }}
+    community.general.timezone:
+      name: "{{ timezone_for_os }}"
+  - name: Generate {{ locale_for_os }} locale
+    locale_gen:
+      name: "{{ locale_for_os }}"
+      state: present
+  - name: Set locale to {{ locale_for_os }}
+    command: update-locale LANG={{ locale_for_os }} LC_ALL={{ locale_for_os }}
+    changed_when: locale_for_os|string not in ansible_env.LANG

@@ -1,0 +1,47 @@
+---
+  - include_tasks: sudo-nopasswd.yml
+    vars:
+      user_for_sudo: "{{ user_to_configure }}"
+  - name: Get user info
+    ansible.builtin.user:
+      name: "{{ user_to_configure }}"
+      state: present
+    register: user_data
+  - name: Update shell to ZSH
+    ansible.builtin.user:
+      name: "{{ user_to_configure }}"
+      shell: /usr/bin/zsh
+  - name: Check npmrc
+    ansible.builtin.file:
+      path: "{{ user_data.home }}/.npmrc"
+      mode: 0600
+      group: "{{ user_to_configure }}"
+      owner: "{{ user_to_configure }}"
+      state: touch
+      modification_time: preserve
+      access_time: preserve
+  - name: Set npm configuration
+    ansible.builtin.lineinfile:
+      dest: "{{ user_data.home }}/.npmrc"
+      regexp: "%prefix"
+      line: "prefix={{ user_data.home }}/.npm_packages"
+      state: present
+  - name: Install node packages
+    become_user: "{{ user_to_configure }}"
+    become: true
+    community.general.npm:
+      name: "{{ node_item }}"
+      global: true
+    loop_control:
+      loop_var: node_item
+    with_items:
+      - neovim
+  - name: Install python packages
+    become_user: "{{ user_to_configure }}"
+    become: true
+    ansible.builtin.pip:
+      name: "{{ pip_item }}"
+    loop_control:
+      loop_var: pip_item
+    with_items:
+      - pynvim
