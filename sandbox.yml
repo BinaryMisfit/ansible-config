@@ -3,4 +3,9 @@
     hosts: all
     roles:
       - role: sudo_nopasswd
-        user_to_sudo: "root"
+        user_to_sudo: { { user_name } }
+        loop_control:
+          loop_var: user_name
+        with_items:
+          - root
+          - binarymisfit
