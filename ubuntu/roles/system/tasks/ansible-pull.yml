@@ -10,6 +10,14 @@
       pkg:
         - ansible
       update_cache: true
+  - name: Enable localhost for ansible 
+    become_user: root
+    become: true
+    ansible.builtin.lineinfile:
+      dest: /etc/ansible/hosts
+      regexp: "localhost"
+      line: "localhost ansible_connection=local"
+      state: present
   - name: Create ansible working directory
     become_user: root
     become: true
