@@ -1,2 +1,3 @@
 ---
-  - include: ubuntu/first_run.yml
+  - name: Update ansible config
+    import_playbook: ubuntu/first_run.yml
