@@ -1,3 +1,4 @@
 ---
   - name: Update ansible config
     import_playbook: ubuntu/first-run.yml
+    when: ansible_distribution == "Ubuntu"
