@@ -3,4 +3,4 @@
     hosts: all
     roles:
       - sudo_nopasswd
-        user_to_sudo: root
+        user_to_sudo: "root"
