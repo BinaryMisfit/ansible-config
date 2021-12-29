@@ -43,3 +43,15 @@
       logfile: /var/log/ansible_pull.log
       workdir: /var/lib/ansible/local
       repo_url: https://github.com/BinaryMisfit/ansible-playbooks
+  - name: Install ansible logrotate
+    become_user: root
+    become: true
+    ansible.builtin.template: 
+      src: templates/etc_logrotated_ansible_pull.j2
+      dest: /etc/logrotate.d/ansible-pull 
+      owner: root
+      group: root
+      mode: 0644
+    vars:
+      logfile: /var/log/ansible_pull.log
+
