@@ -1,2 +1,3 @@
 ---
 sudo_nopasswd_version: 0.0.1
+user_to_sudo: root
