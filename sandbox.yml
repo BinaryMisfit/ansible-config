@@ -3,7 +3,8 @@
     hosts: all
     tasks:
       - name: Enable sudo
-        include_role: sudo_nopasswd
+        include_role:
+          name: sudo_nopasswd
         vars:
           user_to_sudo: "{{ user_name }}"
         loop_control:
