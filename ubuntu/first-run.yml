@@ -38,9 +38,10 @@
             - indicator-cpufreq
             - jq
             - lm-sensors
-            - nodejs
+            - logrotate
             - neofetch
             - neovim
+            - nodejs
             - python3
             - python3-pip
             - socat
