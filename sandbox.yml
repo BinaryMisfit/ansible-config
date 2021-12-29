@@ -2,5 +2,5 @@
   - name: Sandbox Playbook
     hosts: all
     roles:
-      - sudo_nopasswd
+      - role: sudo_nopasswd
         user_to_sudo: "root"
