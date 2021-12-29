@@ -1,4 +1,4 @@
-sudo-nopasswd
+sudo_nopasswd
 =============
 
 Ensures a user has sudo right without needing a password.

@@ -2,4 +2,4 @@
   - name: Sandbox Playbook
     hosts: all
     roles:
-      - sudo-nopasswd
+      - sudo_nopasswd
