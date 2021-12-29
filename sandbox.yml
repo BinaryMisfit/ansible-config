@@ -1,9 +1,11 @@
 ---
   - name: Sandbox Playbook
     hosts: all
-    roles:
-      - role: sudo_nopasswd
-        user_to_sudo: "{{ user_name }}"
+    tasks:
+      - name: Enable sudo
+        include_role: sudo_nopasswd
+        vars:
+          user_to_sudo: "{{ user_name }}"
         loop_control:
           loop_var: user_name
         with_items:
