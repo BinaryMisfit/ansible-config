@@ -13,11 +13,12 @@
   - name: Enable localhost for ansible 
     become_user: root
     become: true
-    ansible.builtin.lineinfile:
+    ansible.builtin.template: 
+      src: templates/etc_ansible_hosts.j2
       dest: /etc/ansible/hosts
-      regexp: "localhost"
-      line: "localhost ansible_connection=local"
-      state: present
+      owner: root
+      group: root
+      mode: 0644
   - name: Create ansible working directory
     become_user: root
     become: true
