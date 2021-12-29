@@ -1,2 +1,19 @@
 ---
-# tasks file for sudo-nopasswd
+- name: "{{ user_to_sudo }}: Check sudo status"
+  become_user: root
+  become: true
+  ansible.builtin.file:
+    path: "/etc/sudoers.d/90-{{ user_to_sudo }}-nopasswd"
+    mode: 0440
+    state: touch
+    modification_time: preserve
+    access_time: preserve
+- name: "{{ user_to_sudo }}: Enable sudo"
+  become_user: root
+  become: true
+  ansible.builtin.lineinfile:
+    dest: /etc/sudoers.d/90-{{ user_to_sudo }}-nopasswd
+    regexp: "%{{ user_to_sudo }}"
+    line: "{{ user_to_sudo }} ALL=(ALL) NOPASSWD: ALL"
+    validate: visudo -cf %s
+    state: present

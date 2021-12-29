@@ -1,0 +1,9 @@
+---
+argument_specs:
+  main:
+    short_description: Arguments required to use sudo-nopasswd
+    options:
+      user_to_sudo:
+        type: 'str'
+        required: true
+        description: 'A valid username existing on the system'
