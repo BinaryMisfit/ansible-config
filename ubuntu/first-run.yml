@@ -81,15 +81,34 @@
       - include_tasks: roles/system/tasks/ansible-pull.yml
   - name: Configure servers to run as kubernetes nodes
     hosts: kubenodes
+    handlers:
+      - name: Restart Haproxy
+        become_user: root
+        become: true
+        ansible.builtin.service:
+          name: haproxy
+          state: restarted
     tasks:
       - include_tasks: roles/apt/tasks/install_ppa.yml
         vars:
           ppa_list:
             - ppa:gluster/glusterfs-9
-      - name: Install glusterfs packages
+      - name: Install required packages
         become_user: root
         become: true
         ansible.builtin.apt:
           pkg:
             - glusterfs-server
+            - haproxy
+            - keepalived
           update_cache: true
+      - name: Configure haproxy
+        become_user: root
+        become: true
+        ansible.builtin.template:
+          src: templates/etc_haproxy_cfg.j2
+          dest: /etc/haproxy/haproxy.cfg
+          mode: 0644
+          owner: root
+          group: root
+        notify: Restart Haproxy

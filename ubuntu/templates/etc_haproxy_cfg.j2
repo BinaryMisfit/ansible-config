@@ -1,0 +1,316 @@
+global
+  ca-base /etc/ssl/certs
+  chroot /var/lib/haproxy
+  crt-base /etc/ssl/private
+  daemon
+  group haproxy
+  localpeer {{ansible_nodename}}
+  log stdout format raw local0
+  pidfile /var/run/haproxy.pid
+  ssl-default-bind-ciphers TLS13-AES-256-GCM-SHA384:TLS13-AES-128-GCM-SHA256:TLS13-CHACHA20-POLY1305-SHA256:EECDH+AESGCM:EECDH+CHACHA20
+  ssl-default-bind-options no-sslv3 no-tlsv10 no-tlsv11
+  user haproxy
+  node {{ansible_nodename}}
+  description Active\ Load\ Balancer
+
+  spread-checks 4
+
+userlist stats_auth
+  group admin
+
+  user admin insecure-password h@pr0xy groups admin
+  user kiosk insecure-password k10sk
+
+http-errors global_errors
+  errorfile 400 /etc/haproxy/errors/400.http
+  errorfile 403 /etc/haproxy/errors/403.http
+  errorfile 408 /etc/haproxy/errors/408.http
+  errorfile 500 /etc/haproxy/errors/500.http
+  errorfile 502 /etc/haproxy/errors/502.http
+  errorfile 503 /etc/haproxy/errors/503.http
+  errorfile 504 /etc/haproxy/errors/504.http
+
+defaults
+  timeout connect 5000ms
+  timeout client 50000ms
+  timeout server 50000ms
+
+listen stats
+  description HTTP:\ Load\ Balancer\ Statistics\ (Port:\ 59999)
+  bind 127.0.0.1:59999
+  mode http
+
+  acl AUTH http_auth(stats_auth)
+  acl AUTH_ADMIN http_auth_group(stats_auth) admin
+
+  stats http-request auth unless AUTH
+  stats enable
+  stats refresh 1s
+  stats uri /
+  stats admin if AUTH_ADMIN
+  stats show-desc
+  stats show-node
+
+frontend tcp-ssh-accept
+  description TCP:\ Shell\ Connection\ (Port:\ 22443)
+  mode tcp
+  bind 192.168.82.251:22443
+
+  log global
+  option tcplog
+  option dontlognull
+
+  default_backend be-ssh-connect
+
+frontend tcp-kube-accept
+  description TCP:\ Kubernetes\ Admin\ (Port:\ 20443)
+  mode tcp
+  bind 192.168.82.252:20443
+
+  log global
+  option tcplog
+  option dontlognull
+
+  default_backend be-kube-control
+
+frontend http-redirect
+  description HTTP:\ Redirect\ HTTPS\ (Port:\ 80)
+  mode http
+
+  log global
+  option httplog
+  option dontlognull
+  option log-separate-errors
+  option socket-stats
+
+  bind 192.168.82.253:80
+  redirect scheme https code 301 if !{ ssl_fc }
+
+frontend https-accept
+  description HTTPS:\ Accept\ Requests\ (Port:\ 443)
+  mode http
+
+  log global
+  option httplog
+  option dontlognull
+  option log-separate-errors
+  option socket-stats
+
+  bind 192.168.82.253:443 ssl crt haproxy/ alpn h2,http/1.1
+
+  acl acl-asus ssl_fc_sni asus.digitalmisfit.net
+  acl acl-fairview ssl_fc_sni fairview.digitalmisfit.net
+  acl acl-nzbhydra ssl_fc_sni nzbhydra.digitalmisfit.net
+  acl acl-plex ssl_fc_sni plex.digitalmisfit.net
+  acl acl-radarr ssl_fc_sni radarr.digitalmisfit.net
+  acl acl-sabnzbd ssl_fc_sni sabnzbd.digitalmisfit.net
+  acl acl-stats ssl_fc_sni stats.digitalmisfit.net
+  acl acl-sonarr ssl_fc_sni sonarr.digitalmisfit.net
+
+  http-request set-log-level silent if acl-stats
+
+  use_backend be-zenwifi-xd4 if acl-asus
+  use_backend be-haproxy-stats if acl-stats
+  use_backend be-homeassistant if acl-fairview
+  use_backend be-nzbhydra if acl-nzbhydra
+  use_backend be-plex if acl-plex
+  use_backend be-radarr if acl-radarr
+  use_backend be-sabnzbd if acl-sabnzbd
+  use_backend be-sonarr if acl-sonarr
+
+  default_backend be-reject
+
+backend be-ssh-connect
+  description TCP:\ Shell\ Connection
+  mode tcp
+
+  default-server inter 10000ms fastinter 5000ms downinter 1000ms fall 2 rise 5
+
+  option allbackups
+
+  server digikube1 192.168.82.11:22 check
+  server digikube2 192.168.82.12:22 check
+  server digikube3 192.168.82.13:22 check
+  server digikube4 192.168.82.14:22 check
+
+backend be-kube-control
+  description TCP:\ Kubernetes\ Admin
+  mode tcp
+
+  default-server inter 10000ms fastinter 5000ms downinter 1000ms fall 2 rise 5
+
+  option allbackups
+
+  server digikube1 192.168.82.11:16443 check
+  server digikube2 192.168.82.12:16443 check
+  server digikube3 192.168.82.13:16443 check
+  server digikube4 192.168.82.14:16443 check
+
+backend be-zenwifi-xd4
+  description HTTPS:\ Asus\ ZenWifi\ XD4
+  mode http
+
+  compression algo gzip
+  compression type text/html text/plain applcation/json
+  default-server inter 30000ms fastinter 2000ms downinter 1000ms fall 2 rise 5 allow-0rtt check-proto h2
+
+  option abortonclose
+  option forwardfor
+  option httpchk
+  option http-keep-alive
+  option prefer-last-server
+  option redispatch
+  option splice-auto
+
+  http-check send meth HEAD uri /
+  http-check expect status 200
+
+  server router 192.168.82.1:80 check
+
+backend be-haproxy-stats
+  description HTTPS:\ HAProxy\ Statistics
+  mode http
+
+  compression algo gzip
+  compression type text/html text/plain applcation/json
+  default-server inter 30000ms fastinter 2000ms downinter 1000ms fall 2 rise 5 allow-0rtt check-proto h2
+
+  option abortonclose
+  option forwardfor
+  option httpchk
+  option http-keep-alive
+  option prefer-last-server
+  option redispatch
+  option splice-auto
+
+  http-check send meth HEAD uri /
+  http-check expect status 401
+
+  server remote 127.0.0.1:59999 check
+
+backend be-homeassistant
+  description HTTPS:\ Home\ Assistant
+  mode http
+
+  compression algo gzip
+  compression type text/html text/plain applcation/json
+  default-server inter 5000ms fastinter 2000ms downinter 1000ms fall 2 rise 5 allow-0rtt check-proto h2
+
+  option abortonclose
+  option forwardfor
+  option httpchk
+  option http-keep-alive
+  option prefer-last-server
+  option redispatch
+  option splice-auto
+
+  http-check send meth GET uri /
+  http-check expect status 200
+
+  server remote 192.168.82.6:8123 check
+
+backend be-nzbhydra
+  description HTTPS:\ NZBHydra\ 2\ NZB\ Search
+  mode http
+
+  compression algo gzip
+  compression type text/html text/plain applcation/json
+  default-server inter 15000ms fastinter 5000ms downinter 3000ms fall 2 rise 5 allow-0rtt check-proto h2
+
+  option abortonclose
+  option forwardfor
+  option httpchk
+  option http-keep-alive
+  option prefer-last-server
+  option redispatch
+  option splice-auto
+
+  http-check send meth HEAD uri /
+  http-check expect status 200
+
+  server mini 192.168.82.5:5076 check
+
+backend be-plex
+  description HTTPS:\ Plex\ Media\ Server
+  mode http
+
+  compression algo gzip
+  compression type text/html text/plain applcation/json
+  default-server inter 10000ms fastinter 2000ms downinter 1000ms fall 2 rise 5 allow-0rtt check-proto h2
+
+  option abortonclose
+  option forwardfor
+  option httpchk
+  option http-keep-alive
+  option prefer-last-server
+  option redispatch
+  option splice-auto
+
+  http-check send meth HEAD uri /
+  http-check expect status 200
+
+  server mini 192.168.82.5:32400 check
+
+backend be-radarr
+  description HTTPS:\ Radarr\ Movie\ Indexer
+  mode http
+
+  compression algo gzip
+  compression type text/html text/plain applcation/json
+  default-server inter 20000ms fastinter 2000ms downinter 1000ms fall 2 rise 5 allow-0rtt check-proto h2
+
+  option abortonclose
+  option forwardfor
+  option httpchk
+  option http-keep-alive
+  option prefer-last-server
+  option redispatch
+  option splice-auto
+
+  http-check send meth HEAD uri /
+  http-check expect status 200
+
+  server mini 192.168.82.5:7878 check
+
+backend be-sabnzbd
+  description HTTPS:\ SABNzbd\ File\ Downloader
+  mode http
+
+  compression algo gzip
+  compression type text/html text/plain applcation/json
+  default-server inter 5000ms fastinter 2000ms downinter 1000ms fall 2 rise 5 allow-0rtt check-proto h2
+
+  option abortonclose
+  option forwardfor
+  option http-keep-alive
+  option prefer-last-server
+  option redispatch
+  option splice-auto
+
+  server mini 192.168.82.5:8080 check port 8080
+
+backend be-sonarr
+  description HTTPS:\ Sonarr\ Series\ Indexer
+  mode http
+
+  compression algo gzip
+  compression type text/html text/plain applcation/json
+  default-server inter 20000ms fastinter 2000ms downinter 1000ms fall 2 rise 5 allow-0rtt check-proto h2
+
+  option abortonclose
+  option forwardfor
+  option httpchk
+  option http-keep-alive
+  option prefer-last-server
+  option redispatch
+  option splice-auto
+
+  http-check send meth HEAD uri /
+  http-check expect status 200
+
+  server mini 192.168.82.5:8989 check
+
+backend be-reject
+  description HTTPS:\ Reject\ Unknown\ Domains
+  mode http
+  http-request deny deny_status 403

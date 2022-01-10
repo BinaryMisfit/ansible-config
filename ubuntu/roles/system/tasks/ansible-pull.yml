@@ -34,9 +34,9 @@
     ansible.builtin.template: 
       src: templates/etc_crond_ansible_pull.j2
       dest: /etc/cron.d/ansible_pull
+      mode: 0644
       owner: root
       group: root
-      mode: 0644
     vars:
       schedule: "*/15 * * * *"
       cron_user: root
@@ -49,9 +49,9 @@
     ansible.builtin.template: 
       src: templates/etc_logrotated_ansible_pull.j2
       dest: /etc/logrotate.d/ansible-pull 
+      mode: 0644
       owner: root
       group: root
-      mode: 0644
     vars:
       logfile: /var/log/ansible_pull.log
 
