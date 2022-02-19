@@ -89,10 +89,18 @@
           name: haproxy
           state: restarted
     tasks:
+      - include_tasks: roles/apt/tasks/install_apt_key.yml
+        vars:
+          key_list:
+            - https://packages.cloud.google.com/apt/doc/apt-key.gpg
       - include_tasks: roles/apt/tasks/install_ppa.yml
         vars:
           ppa_list:
             - ppa:gluster/glusterfs-9
+      - include_tasks: roles/apt/tasks/install_deb_sources.yml
+        vars:
+          repo_list:
+            - deb https://apt.kubernetes.io/ kubernetes-xenial main
       - name: Install required packages
         become_user: root
         become: true
@@ -101,6 +109,7 @@
             - glusterfs-server
             - haproxy
             - keepalived
+            - kubectl
           update_cache: true
       - name: Configure haproxy
         become_user: root
