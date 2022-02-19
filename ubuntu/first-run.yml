@@ -109,7 +109,9 @@
             - glusterfs-server
             - haproxy
             - keepalived
+            - kubeadm
             - kubectl
+            - kubelet
           update_cache: true
       - name: Configure haproxy
         become_user: root
