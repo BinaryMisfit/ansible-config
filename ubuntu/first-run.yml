@@ -6,25 +6,36 @@
         vars:
           timezone_for_os: "Africa/Johannesburg"
           locale_for_os: "en_US.UTF-8"
+        tags:
+          - setup
       - include_tasks: roles/apt/tasks/install_ppa.yml
         vars:
           ppa_list:
             - ppa:git-core/ppa
             - ppa:neovim-ppa/stable
+        tags:
+          - setup
       - include_tasks: roles/apt/tasks/install_apt_key.yml
         vars:
           key_list:
             - https://deb.nodesource.com/gpgkey/nodesource.gpg.key
+        tags:
+          - setup
       - include_tasks: roles/apt/tasks/install_deb_sources.yml
         vars:
           repo_list:
             - deb https://deb.nodesource.com/node_17.x impish main
+        tags:
+          - setup
       - name: Update all packages
         become_user: root
         become: true
         ansible.builtin.apt:
           upgrade: full
           update_cache: true
+        tags:
+          - setup
+          - update
       - name: Install required packages
         become_user: root
         become: true
@@ -52,6 +63,9 @@
           update_cache: true
           autoclean: true
           state: present
+        tags:
+          - setup
+          - update
       - name: Remove obsolete packages
         become_user: root
         become: true
@@ -64,6 +78,9 @@
           autoremove: true
           autoclean: true
           state: absent
+        tags:
+          - setup
+          - update
       - name: Create user - binarymisfit
         become_user: root
         become: true
@@ -72,13 +89,19 @@
           groups: sudo
           shell: /usr/bin/zsh
           state: present
+        tags:
+          - setup
       - include_tasks: roles/users/tasks/configure-env.yml
         vars:
           user_to_configure: "{{ item }}"
         with_items:
           - root
           - binarymisfit
+        tags:
+          - setup
       - include_tasks: roles/system/tasks/ansible-pull.yml
+        tags:
+          - setup
   - name: Configure servers to run as kubernetes nodes
     hosts: kubenodes
     handlers:
@@ -93,14 +116,26 @@
         vars:
           key_list:
             - https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        tags:
+          - setup
+          - kube
+          - gluster
       - include_tasks: roles/apt/tasks/install_ppa.yml
         vars:
           ppa_list:
             - ppa:gluster/glusterfs-9
+        tags:
+          - setup
+          - kube
+          - gluster
       - include_tasks: roles/apt/tasks/install_deb_sources.yml
         vars:
           repo_list:
             - deb https://apt.kubernetes.io/ kubernetes-xenial main
+        tags:
+          - setup
+          - kube
+          - gluster
       - name: Install required packages
         become_user: root
         become: true
@@ -113,6 +148,113 @@
             - kubectl
             - kubelet
           update_cache: true
+        tags:
+          - setup
+          - kube
+          - gluster
+      - name: Create file for Brick 1
+        become_user: root
+        become: true
+        community.general.filesize:
+          path: /var/brick1.glusterfs
+          size: 5G
+          mode: 0644
+          owner: root
+          group: root
+        tags:
+          - setup
+          - kube
+          - gluster
+      - name: Create file for Brick 2
+        become_user: root
+        become: true
+        community.general.filesize:
+          path: /var/brick2.glusterfs
+          size: 5G
+          mode: 0644
+          owner: root
+          group: root
+        tags:
+          - setup
+          - kube
+          - gluster
+      - name: Create XFS filesystem for Brick 1
+        become_user: root
+        become: true
+        community.general.filesystem:
+          fstype: xfs
+          dev: /var/brick1.glusterfs
+        tags:
+          - setup
+          - kube
+          - gluster
+      - name: Create XFS filesystem for Brick 2
+        become_user: root
+        become: true
+        community.general.filesystem:
+          fstype: xfs
+          dev: /var/brick2.glusterfs
+        tags:
+          - setup
+          - kube
+          - gluster
+      - name: Mount XFS filesystem for Brick 1
+        become_user: root
+        become: true
+        ansible.posix.mount:
+          path: /mnt/gluster_brick1/
+          src: /var/brick1.glusterfs
+          fstype: xfs
+          state: mounted
+        tags:
+          - setup
+          - kube
+          - gluster
+      - name: Mount XFS filesystem for Brick 2
+        become_user: root
+        become: true
+        ansible.posix.mount:
+          path: /mnt/gluster_brick2/
+          src: /var/brick2.glusterfs
+          fstype: xfs
+          state: mounted
+        tags:
+          - setup
+          - kube
+          - gluster
+      - name: Create glusterfs volume
+        become_user: root
+        become: true
+        gluster_volume:
+          name: kubecluster
+          bricks: /mnt/gluster_brick1/data,/mnt/gluster_brick2/data
+          replicas: 4
+          rebalance: true
+          start_on_create: true
+          cluster:
+            - digikube1
+            - digikube2
+            - digikube3
+            - digikube4
+          state: present
+        run_once: true
+        tags:
+          - setup
+          - kube
+          - gluster
+      - name: Mount GlusterFS filesystem for host
+        become_user: root
+        become: true
+        ansible.posix.mount:
+          path: /mnt/kubecluster/
+          src: localhost:/kubecluster
+          fstype: glusterfs
+          opts: defaults,_netdev,noauto,x-systemd.automount
+          state: mounted
+        tags:
+          - setup
+          - kube
+          - gluster
       - name: Configure haproxy
         become_user: root
         become: true
@@ -123,3 +265,6 @@
           owner: root
           group: root
         notify: Restart Haproxy
+        tags:
+          - setup
+          - kube
