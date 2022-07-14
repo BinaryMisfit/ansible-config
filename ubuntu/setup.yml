@@ -35,13 +35,14 @@
           update_cache: true
         tags:
           - setup
-          - update
       - name: Install required packages
         become_user: root
         become: true
         ansible.builtin.apt:
           pkg:
+            - apt-transport-https
             - build-essential
+            - ca-certificates
             - coreutils
             - curl
             - i2c-tools
@@ -55,9 +56,11 @@
             - nodejs
             - python3
             - python3-pip
+            - python3-setuptools
             - socat
             - software-properties-common
             - tmux
+            - virtualenv
             - zsh
             - zsh-antigen
           update_cache: true
@@ -65,7 +68,6 @@
           state: present
         tags:
           - setup
-          - update
       - name: Remove obsolete packages
         become_user: root
         become: true
@@ -80,7 +82,6 @@
           state: absent
         tags:
           - setup
-          - update
       - name: Create user - binarymisfit
         become_user: root
         become: true
@@ -115,6 +116,7 @@
       - include_tasks: roles/apt/tasks/install_apt_key.yml
         vars:
           key_list:
+            - https://download.docker.com/linux/ubuntu/gpg
             - https://packages.cloud.google.com/apt/doc/apt-key.gpg
         tags:
           - setup
@@ -131,6 +133,7 @@
       - include_tasks: roles/apt/tasks/install_deb_sources.yml
         vars:
           repo_list:
+            - deb https://download.docker.com/linux/ubuntu impish stable
             - deb https://apt.kubernetes.io/ kubernetes-xenial main
         tags:
           - setup
@@ -141,6 +144,7 @@
         become: true
         ansible.builtin.apt:
           pkg:
+            - docker-ce
             - glusterfs-server
             - haproxy
             - keepalived
@@ -255,6 +259,15 @@
           - setup
           - kube
           - gluster
+      - name: "Install python packages"
+        become_user: root
+        become: true
+        ansible.builtin.pip:
+          name: "{{ pip_item }}"
+        loop_control:
+          loop_var: pip_item
+        with_items:
+          - docker
       - name: Configure haproxy
         become_user: root
         become: true
@@ -268,3 +281,23 @@
         tags:
           - setup
           - kube
+  - name: Configure kubernetes master
+    hosts: digikube1
+    tasks:
+      - name: Prepare images for kubeadm
+        become_user: root
+        become: true
+        shell: kubeadm config images pull
+        tags:
+          - setup
+          - kube
+          - master
+      - name: Resetting kubeadm
+        become_user: root
+        become: true
+        shell: kubeadm reset -f
+        register: output
+        tags:
+          - setup
+          - kube
+          - master

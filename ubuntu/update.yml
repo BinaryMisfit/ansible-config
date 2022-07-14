@@ -1,0 +1,11 @@
+- name: Regular update for Ubuntu servers
+  hosts: all
+  tasks:
+    - name: Update all packages
+      become_user: root
+      become: true
+      ansible.builtin.apt:
+        upgrade: full
+        update_cache: true
+      tags:
+        - update
