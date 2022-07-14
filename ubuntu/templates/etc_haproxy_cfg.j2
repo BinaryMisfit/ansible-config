@@ -1,7 +1,7 @@
 global
   ca-base /etc/ssl/certs
   chroot /var/lib/haproxy
-  crt-base /etc/ssl/private
+  crt-base /opt/acme/certs
   daemon
   group haproxy
   localpeer {{ansible_nodename}}
