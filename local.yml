@@ -1,3 +1,3 @@
 ---
   - name: Update ansible config
-    ansible.builtin.import_playbook: ubuntu/ubuntu.yml
+    ansible.builtin.import_playbook: ubuntu/update.yml
