@@ -1,0 +1,105 @@
+---
+  - name: GlusterFS install for Ubuntu servers
+    hosts: kubenodes
+    tasks:
+      - include_tasks: roles/apt/tasks/install_ppa.yml
+        vars:
+          ppa_list:
+            - ppa:gluster/glusterfs-9
+        tags:
+          - gluster
+      - name: Install required packages
+        become_user: root
+        become: true
+        ansible.builtin.apt:
+          pkg:
+            - glusterfs-server
+          update_cache: true
+        tags:
+          - gluster
+      - name: Create file for Brick 1
+        become_user: root
+        become: true
+        community.general.filesize:
+          path: /var/brick1.glusterfs
+          size: 5G
+          mode: 0644
+          owner: root
+          group: root
+        tags:
+          - gluster
+      - name: Create file for Brick 2
+        become_user: root
+        become: true
+        community.general.filesize:
+          path: /var/brick2.glusterfs
+          size: 5G
+          mode: 0644
+          owner: root
+          group: root
+        tags:
+          - gluster
+      - name: Create XFS filesystem for Brick 1
+        become_user: root
+        become: true
+        community.general.filesystem:
+          fstype: xfs
+          dev: /var/brick1.glusterfs
+        tags:
+          - gluster
+      - name: Create XFS filesystem for Brick 2
+        become_user: root
+        become: true
+        community.general.filesystem:
+          fstype: xfs
+          dev: /var/brick2.glusterfs
+        tags:
+          - gluster
+      - name: Mount XFS filesystem for Brick 1
+        become_user: root
+        become: true
+        ansible.posix.mount:
+          path: /mnt/gluster_brick1/
+          src: /var/brick1.glusterfs
+          fstype: xfs
+          state: mounted
+        tags:
+          - gluster
+      - name: Mount XFS filesystem for Brick 2
+        become_user: root
+        become: true
+        ansible.posix.mount:
+          path: /mnt/gluster_brick2/
+          src: /var/brick2.glusterfs
+          fstype: xfs
+          state: mounted
+        tags:
+          - gluster
+      - name: Create glusterfs volume
+        become_user: root
+        become: true
+        gluster_volume:
+          name: kubecluster
+          bricks: /mnt/gluster_brick1/data,/mnt/gluster_brick2/data
+          replicas: 4
+          rebalance: true
+          start_on_create: true
+          cluster:
+            - digikube1
+            - digikube2
+            - digikube3
+            - digikube4
+          state: present
+        tags:
+          - gluster
+      - name: Mount GlusterFS filesystem for host
+        become_user: root
+        become: true
+        ansible.posix.mount:
+          path: /mnt/kubecluster/
+          src: localhost:/kubecluster
+          fstype: glusterfs
+          opts: defaults,_netdev,noauto,x-systemd.automount
+          state: mounted
+        tags:
+          - gluster
